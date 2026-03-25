@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -364,6 +365,33 @@ func deleteBudget(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
+func escapeCSV(s string) string {
+	// If string contains comma, quote, or newline, wrap in quotes and escape quotes
+	if len(s) == 0 {
+		return s
+	}
+	needsQuotes := false
+	for _, c := range s {
+		if c == ',' || c == '"' || c == '\n' || c == '\r' {
+			needsQuotes = true
+			break
+		}
+	}
+	if needsQuotes {
+		// Replace " with ""
+		escaped := ""
+		for _, c := range s {
+			if c == '"' {
+				escaped += "\"\""
+			} else {
+				escaped += string(c)
+			}
+		}
+		return "\"" + escaped + "\""
+	}
+	return s
+}
+
 func exportData(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
 	if r.Method == "OPTIONS" {
@@ -413,18 +441,28 @@ func exportData(w http.ResponseWriter, r *http.Request) {
 			if b.AutoPay {
 				autoPay = "true"
 			}
-			line := fmt.Sprintf("BILL,%s,%s,%.2f,%s,%d,%d,%d,%s,%s,%.2f,%s,%s,%s,%s,%s\n",
-				b.Name, b.Account, b.Amount, b.Frequency, b.DueDate, b.PayDate,
+			// Escape commas in text fields
+			name := escapeCSV(b.Name)
+			account := escapeCSV(b.Account)
+			website := escapeCSV(b.Website)
+			comments := escapeCSV(b.Comments)
+			
+			line := fmt.Sprintf("BILL,%s,%s,%.2f,%s,%d,%d,%d,%s,%s,%.4f,%s,%s,%s,%s,%s\n",
+				name, account, b.Amount, b.Frequency, b.DueDate, b.PayDate,
 				b.TermNumber, b.TermUnit, b.TermEnd, b.InterestRate, b.BillType,
-				b.Website, autoPay, b.PaymentMethod, b.Comments)
+				website, autoPay, b.PaymentMethod, comments)
 			w.Write([]byte(line))
 		}
 		
 		// Write incomes
 		w.Write([]byte("\nTYPE,NAME,ACCOUNT,AMOUNT,FREQUENCY,DAY,COMMENTS\n"))
 		for _, i := range incomes {
+			name := escapeCSV(i.Name)
+			account := escapeCSV(i.Account)
+			comments := escapeCSV(i.Comments)
+			
 			line := fmt.Sprintf("INCOME,%s,%s,%.2f,%s,%d,%s\n",
-				i.Name, i.Account, i.Amount, i.Frequency, i.Day, i.Comments)
+				name, account, i.Amount, i.Frequency, i.Day, comments)
 			w.Write([]byte(line))
 		}
 	} else {
