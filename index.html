@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 100%; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow-x: auto; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; position: relative; }
+        h1 { font-size: 2em; margin-bottom: 20px; }
+        .privacy-toggle { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 8px; }
+        .privacy-toggle input { width: auto; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .summary-card { background: rgba(255, 255, 255, 0.2); padding: 15px; border-radius: 12px; }
+        .summary-card h3 { font-size: 0.8em; opacity: 0.9; margin-bottom: 8px; text-transform: uppercase; }
+        .info-btn { background: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.5); color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; cursor: pointer; margin-left: 8px; transition: all 0.2s; padding: 0; vertical-align: middle; }
+        .info-btn:hover { background: rgba(255,255,255,0.5); transform: scale(1.1); }
+        .summary-card .amount { font-size: 1.8em; font-weight: bold; }
+        .summary-card.positive .amount { color: #4ade80; }
+        .summary-card.negative .amount { color: #f87171; }
+        .content { padding: 20px; }
+        .budget-selector { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .budget-selector select { flex: 1; min-width: 150px; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px; }
+        .section { margin-bottom: 30px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; flex-wrap: wrap; gap: 10px; }
+        .section-header h2 { color: #1f2937; font-size: 1.3em; }
+        .section-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 600; white-space: nowrap; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #ef4444; color: white; font-size: 11px; padding: 4px 8px; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-edit, .btn-view { background: #3b82f6; color: white; font-size: 11px; padding: 4px 8px; }
+        .btn-edit:hover, .btn-view:hover { background: #2563eb; }
+        .btn-schedule { background: #8b5cf6; color: white; font-size: 11px; padding: 4px 8px; }
+        .btn-schedule:hover { background: #7c3aed; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-secondary:hover { background: #4b5563; }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; min-width: 1000px; border-collapse: collapse; margin-top: 15px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); font-size: 0.85em; }
+        th { background: #f9fafb; color: #374151; font-weight: 600; padding: 10px 6px; text-align: left; font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; user-select: none; white-space: nowrap; }
+        th:hover { background: #f3f4f6; }
+        th.sortable::after { content: ' ⇅'; opacity: 0.3; }
+        th.sort-asc::after { content: ' ↑'; opacity: 1; }
+        th.sort-desc::after { content: ' ↓'; opacity: 1; }
+        td { padding: 8px 6px; border-top: 1px solid #e5e7eb; color: #4b5563; font-size: 0.9em; }
+        tr:hover { background: #f9fafb; }
+        .action-btns { white-space: nowrap; display: flex; gap: 4px; flex-wrap: wrap; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; overflow-y: auto; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+        .modal-header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb; }
+        .modal-header h2 { color: #1f2937; font-size: 1.5em; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; color: #374151; font-weight: 500; font-size: 0.85em; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .form-group input[type="checkbox"] { width: auto; margin-right: 8px; }
+        .checkbox-group { display: flex; align-items: center; }
+        .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .empty-state { text-align: center; padding: 30px; color: #9ca3af; }
+        .hidden { display: none !important; }
+        .link-button { color: #3b82f6; text-decoration: none; cursor: pointer; font-size: 1.2em; }
+        .link-button:hover { text-decoration: underline; }
+        .amortization-table { max-height: 400px; overflow-y: auto; }
+        .detail-view { padding: 20px; }
+        .detail-row { display: flex; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .detail-label { font-weight: 600; width: 180px; color: #374151; }
+        .detail-value { color: #1f2937; flex: 1; }
+        .print-btn { margin-top: 20px; }
+        @media print { .no-print { display: none !important; } }
+        @media (max-width: 768px) {
+            .container { border-radius: 0; }
+            h1 { font-size: 1.5em; }
+            .summary { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+            .privacy-toggle { position: static; margin-bottom: 15px; justify-content: center; }
+            table { font-size: 0.75em; min-width: 100%; }
+            th, td { padding: 6px 4px; font-size: 0.8em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="privacy-toggle no-print">
+                <input type="checkbox" id="showIncomeToggle" checked onchange="toggleIncomePrivacy()">
+                <label for="showIncomeToggle" style="margin: 0; cursor: pointer;">Show Income</label>
+            </div>
+            <h1>💰 Budget Tracker</h1>
+            <div class="summary">
+                <div class="summary-card income-sensitive"><h3>Monthly Income</h3><div class="amount positive" id="totalIncome">$0.00</div></div>
+                <div class="summary-card">
+                    <h3>Monthly Expenses <button class="info-btn" onclick="showExpenseBreakdown()" title="View breakdown by payment method">ℹ️</button></h3>
+                    <div class="amount negative" id="totalExpenses">$0.00</div>
+                </div>
+                <div class="summary-card income-sensitive"><h3>Leftover</h3><div class="amount" id="leftover">$0.00</div></div>
+            </div>
+        </header>
+        <div class="content">
+            <div class="budget-selector no-print">
+                <select id="budgetSelect" onchange="switchBudget()"><option value="">Select a budget...</option></select>
+                <button class="btn btn-primary" onclick="createNewBudget()">+ New</button>
+                <button class="btn btn-success hidden" onclick="exportData('json')" id="exportJsonBtn">Export JSON</button>
+                <button class="btn btn-success hidden" onclick="exportData('csv')" id="exportCsvBtn">Export CSV</button>
+            </div>
+            <div id="budgetContent" class="hidden">
+                <div class="section">
+                    <div class="section-header"><h2>📝 Planned & Estimated Expenses</h2><div class="section-actions no-print"><button class="btn btn-primary" onclick="openBillModal(null, true)">+ Add Planned</button></div></div>
+                    <div class="table-container"><div id="plannedTable"></div></div>
+                </div>
+                <div class="section">
+                    <div class="section-header"><h2>📋 Bills & Recurring Expenses</h2><div class="section-actions no-print"><button class="btn btn-primary" onclick="openBillModal(null, false)">+ Add Bill</button></div></div>
+                    <div class="table-container"><div id="billsTable"></div></div>
+                </div>
+                <div class="section income-sensitive">
+                    <div class="section-header"><h2>💵 Income Sources</h2><div class="section-actions no-print"><button class="btn btn-primary" onclick="openIncomeModal()">+ Add Income</button></div></div>
+                    <div class="table-container"><div id="incomeTable"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="billModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="billModalTitle">Add Bill</h2></div>
+            <form id="billForm">
+                <input type="hidden" id="billIsPlanned">
+                <div class="form-row">
+                    <div class="form-group"><label>Name *</label><input type="text" id="billName" required></div>
+                    <div class="form-group"><label>Type *</label><select id="billType" required><option value="credit_card">Credit Card</option><option value="loan">Loan</option><option value="utility">Utility</option><option value="insurance">Insurance</option><option value="tax">Tax</option><option value="streaming">Streaming Service</option><option value="grocery">Grocery/Shopping</option><option value="gas">Gas/Fuel</option><option value="other">Other</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Account Number</label><input type="text" id="billAccount"></div>
+                    <div class="form-group"><label>Website</label><input type="url" id="billWebsite" placeholder="https://..."></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Monthly Payment Amount *</label><input type="number" id="billAmount" step="0.01" required></div>
+                    <div class="form-group"><label>Interest Rate (APR %)</label><input type="number" id="billInterestRate" step="0.0001" min="0" max="100" placeholder="0.0000"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Frequency *</label><select id="billFrequency" required><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="yearly">Yearly</option></select></div>
+                    <div class="form-group"><label>Payment Method</label><select id="billPaymentMethod"><option value="credit_card">Credit Card</option><option value="check">Check</option><option value="in_person">In Person</option><option value="other">Other</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Due Date (Day of Month)</label><input type="number" id="billDueDate" min="1" max="31"></div>
+                    <div class="form-group"><label>Pay Date (Day of Month)</label><input type="number" id="billPayDate" min="1" max="31"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Loan Start Date</label><input type="date" id="billStartDate"></div>
+                    <div class="form-group"><label>Term End Date</label><input type="date" id="billTermEnd"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Total Term</label><div style="display: flex; gap: 10px;"><input type="number" id="billTermNumber" min="0" placeholder="0" style="flex: 1;"><select id="billTermUnit" style="flex: 1;"><option value="">-</option><option value="months">Months</option><option value="years">Years</option></select></div></div>
+                    <div class="form-group"><div class="checkbox-group" style="margin-top: 24px;"><input type="checkbox" id="billAutoPay"><label for="billAutoPay" style="margin: 0;">Auto-Pay Enabled</label></div></div>
+                </div>
+                <div class="form-group"><label>Comments</label><textarea id="billComments"></textarea></div>
+                <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closeBillModal()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="incomeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="incomeModalTitle">Add Income</h2></div>
+            <form id="incomeForm">
+                <div class="form-row">
+                    <div class="form-group"><label>Income Source Name *</label><input type="text" id="incomeName" required></div>
+                    <div class="form-group"><label>Account/Employer</label><input type="text" id="incomeAccount"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Amount *</label><input type="number" id="incomeAmount" step="0.01" required></div>
+                    <div class="form-group"><label>Frequency *</label><select id="incomeFrequency" required><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="yearly">Yearly</option></select></div>
+                </div>
+                <div class="form-group"><label>Expected Day of Month</label><input type="number" id="incomeDay" min="1" max="31"></div>
+                <div class="form-group"><label>Comments</label><textarea id="incomeComments"></textarea></div>
+                <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closeIncomeModal()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="detailTitle">Details</h2></div>
+            <div id="detailContent" class="detail-view"></div>
+            <div class="form-actions no-print"><button class="btn btn-primary print-btn" onclick="window.print()">Print</button><button type="button" class="btn btn-secondary" onclick="closeDetailModal()">Close</button></div>
+        </div>
+    </div>
+    <div id="amortizationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="amortizationTitle">Amortization Schedule</h2></div>
+            <div id="amortizationContent"></div>
+            <div class="form-actions no-print"><button type="button" class="btn btn-secondary" onclick="closeAmortizationModal()">Close</button></div>
+        </div>
+    </div>
+    <div id="breakdownModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Monthly Expense Breakdown</h2></div>
+            <div id="breakdownContent"></div>
+            <div class="form-actions no-print"><button type="button" class="btn btn-secondary" onclick="closeBreakdownModal()">Close</button></div>
+        </div>
+    </div>
+    <script>
+        let currentBudgetId = null, bills = [], incomes = [], editingBillId = null, editingIncomeId = null;
+        let billSortColumn = null, billSortDirection = 'asc', plannedSortColumn = null, plannedSortDirection = 'asc', incomeSortColumn = null, incomeSortDirection = 'asc';
+        let showIncome = true;
+        document.addEventListener('DOMContentLoaded', () => { loadBudgets(); showIncome = document.getElementById('showIncomeToggle').checked; toggleIncomePrivacy(); });
+        function toggleIncomePrivacy() { showIncome = document.getElementById('showIncomeToggle').checked; document.querySelectorAll('.income-sensitive').forEach(el => { if (showIncome) { el.style.filter = 'none'; el.querySelectorAll('.amount, td, .detail-value').forEach(t => { if (t.dataset.original) t.textContent = t.dataset.original; }); } else { el.style.filter = 'blur(0px)'; el.querySelectorAll('.amount, td:not(:first-child), .detail-value').forEach(t => { if (!t.dataset.original) t.dataset.original = t.textContent; t.textContent = '****'; }); }}); }
+        async function loadBudgets() { try { const r = await fetch('/api/budgets'); const d = await r.json(); const s = document.getElementById('budgetSelect'); s.innerHTML = '<option value="">Select a budget...</option>'; d.budgets.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; s.appendChild(o); }); } catch (e) { console.error(e); }}
+        async function createNewBudget() { const n = prompt('Enter budget name:'); if (!n) return; try { await fetch('/api/budgets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: n }) }); await loadBudgets(); } catch { alert('Failed to create budget'); }}
+        async function switchBudget() { const s = document.getElementById('budgetSelect'); currentBudgetId = parseInt(s.value); if (!currentBudgetId) { document.getElementById('budgetContent').classList.add('hidden'); document.getElementById('exportJsonBtn').classList.add('hidden'); document.getElementById('exportCsvBtn').classList.add('hidden'); return; } try { const r = await fetch(`/api/budget?id=${currentBudgetId}`); const d = await r.json(); bills = d.bills || []; incomes = d.incomes || []; document.getElementById('budgetContent').classList.remove('hidden'); document.getElementById('exportJsonBtn').classList.remove('hidden'); document.getElementById('exportCsvBtn').classList.remove('hidden'); renderBills(); renderPlanned(); renderIncomes(); updateSummary(); toggleIncomePrivacy(); } catch (e) { console.error(e); }}
+        function exportData(format) { if (!currentBudgetId) { alert('Please select a budget first'); return; } window.location.href = `/api/export?id=${currentBudgetId}&format=${format}`; }
+        function toMonthly(amt, freq) { const m = { daily: 30, weekly: 4.33, monthly: 1, yearly: 1/12 }; return amt * m[freq]; }
+        function updateSummary() { const tI = incomes.reduce((s, i) => s + toMonthly(i.amount, i.frequency), 0); const tE = bills.reduce((s, b) => s + toMonthly(b.amount, b.frequency), 0); const lo = tI - tE; document.getElementById('totalIncome').textContent = `$${tI.toFixed(2)}`; document.getElementById('totalExpenses').textContent = `$${tE.toFixed(2)}`; document.getElementById('leftover').textContent = `$${lo.toFixed(2)}`; document.getElementById('leftover').className = 'amount ' + (lo >= 0 ? 'positive' : 'negative'); }
+        function sortBills(col) { if (billSortColumn === col) billSortDirection = billSortDirection === 'asc' ? 'desc' : 'asc'; else { billSortColumn = col; billSortDirection = 'asc'; } bills.sort((a, b) => { let aV = a[col], bV = b[col]; if (aV == null) aV = ''; if (bV == null) bV = ''; if (typeof aV === 'string') return billSortDirection === 'asc' ? aV.localeCompare(bV) : bV.localeCompare(aV); else return billSortDirection === 'asc' ? aV - bV : bV - aV; }); renderBills(); }
+        function sortPlanned(col) { if (plannedSortColumn === col) plannedSortDirection = plannedSortDirection === 'asc' ? 'desc' : 'asc'; else { plannedSortColumn = col; plannedSortDirection = 'asc'; } bills.sort((a, b) => { let aV = a[col], bV = b[col]; if (aV == null) aV = ''; if (bV == null) bV = ''; if (typeof aV === 'string') return plannedSortDirection === 'asc' ? aV.localeCompare(bV) : bV.localeCompare(aV); else return plannedSortDirection === 'asc' ? aV - bV : bV - aV; }); renderPlanned(); }
+        function sortIncomes(col) { if (incomeSortColumn === col) incomeSortDirection = incomeSortDirection === 'asc' ? 'desc' : 'asc'; else { incomeSortColumn = col; incomeSortDirection = 'asc'; } incomes.sort((a, b) => { let aV = a[col], bV = b[col]; if (aV == null) aV = ''; if (bV == null) bV = ''; if (typeof aV === 'string') return incomeSortDirection === 'asc' ? aV.localeCompare(bV) : bV.localeCompare(aV); else return incomeSortDirection === 'asc' ? aV - bV : bV - aV; }); renderIncomes(); }
+        function openBillModal(bill = null, isPlanned = false) { const m = document.getElementById('billModal'); const f = document.getElementById('billForm'); if (bill) { editingBillId = bill.id; isPlanned = bill.isPlanned; document.getElementById('billModalTitle').textContent = isPlanned ? 'Edit Planned Expense' : 'Edit Bill'; document.getElementById('billName').value = bill.name || ''; document.getElementById('billType').value = bill.billType || 'other'; document.getElementById('billAccount').value = bill.account || ''; document.getElementById('billWebsite').value = bill.website || ''; document.getElementById('billAmount').value = bill.amount || ''; document.getElementById('billInterestRate').value = bill.interestRate || ''; document.getElementById('billFrequency').value = bill.frequency || 'monthly'; document.getElementById('billPaymentMethod').value = bill.paymentMethod || 'other'; document.getElementById('billDueDate').value = bill.dueDate || ''; document.getElementById('billPayDate').value = bill.payDate || ''; document.getElementById('billTermNumber').value = bill.termNumber || ''; document.getElementById('billTermUnit').value = bill.termUnit || ''; document.getElementById('billStartDate').value = bill.startDate || ''; document.getElementById('billTermEnd').value = bill.termEnd || ''; document.getElementById('billAutoPay').checked = bill.autoPay || false; document.getElementById('billComments').value = bill.comments || ''; } else { editingBillId = null; document.getElementById('billModalTitle').textContent = isPlanned ? 'Add Planned Expense' : 'Add Bill'; f.reset(); } document.getElementById('billIsPlanned').value = isPlanned; m.classList.add('active'); }
+        function closeBillModal() { document.getElementById('billModal').classList.remove('active'); editingBillId = null; }
+        document.getElementById('billForm').addEventListener('submit', async (e) => { e.preventDefault(); const b = { id: editingBillId || 0, name: document.getElementById('billName').value, billType: document.getElementById('billType').value, account: document.getElementById('billAccount').value, website: document.getElementById('billWebsite').value, amount: parseFloat(document.getElementById('billAmount').value), interestRate: parseFloat(document.getElementById('billInterestRate').value) || 0, frequency: document.getElementById('billFrequency').value, paymentMethod: document.getElementById('billPaymentMethod').value, dueDate: parseInt(document.getElementById('billDueDate').value) || 0, payDate: parseInt(document.getElementById('billPayDate').value) || 0, termNumber: parseInt(document.getElementById('billTermNumber').value) || 0, termUnit: document.getElementById('billTermUnit').value, startDate: document.getElementById('billStartDate').value, termEnd: document.getElementById('billTermEnd').value, autoPay: document.getElementById('billAutoPay').checked, isPlanned: document.getElementById('billIsPlanned').value === 'true', comments: document.getElementById('billComments').value }; try { await fetch('/api/bill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budget_id: currentBudgetId, bill: b }) }); await switchBudget(); closeBillModal(); } catch { alert('Failed to save'); }});
+        function renderTableData(data, tableId, sortCol, sortDir, sortFunc, isPlanned = false) { const c = document.getElementById(tableId); if (data.length === 0) { c.innerHTML = '<div class="empty-state"><p>No items yet.</p></div>'; return; } const gSC = (col) => sortCol === col ? (sortDir === 'asc' ? 'sort-asc' : 'sort-desc') : 'sortable'; let h = `<table><thead><tr><th class="${gSC('name')}" onclick="${sortFunc}('name')">Name</th><th class="${gSC('billType')}" onclick="${sortFunc}('billType')">Type</th><th class="${gSC('amount')}" onclick="${sortFunc}('amount')">Payment</th><th class="${gSC('frequency')}" onclick="${sortFunc}('frequency')">Freq</th><th class="${gSC('interestRate')}" onclick="${sortFunc}('interestRate')">Interest</th><th class="${gSC('dueDate')}" onclick="${sortFunc}('dueDate')">Due</th><th class="${gSC('payDate')}" onclick="${sortFunc}('payDate')">Pay</th><th class="${gSC('paymentMethod')}" onclick="${sortFunc}('paymentMethod')">Method</th><th class="${gSC('autoPay')}" onclick="${sortFunc}('autoPay')">Auto</th><th class="${gSC('termEnd')}" onclick="${sortFunc}('termEnd')">Term End</th><th class="no-print">Actions</th></tr></thead><tbody>`; data.forEach((b) => { const canAmort = b.amount && b.interestRate && b.termNumber && b.termUnit && b.startDate; const wL = b.website ? `<a href="${b.website}" target="_blank" class="link-button">🔗</a>` : ''; h += `<tr><td><strong>${b.name}</strong> ${wL}</td><td>${fBT(b.billType)}</td><td>$${b.amount.toFixed(2)}</td><td>${b.frequency}</td><td>${b.interestRate ? b.interestRate.toFixed(4) + '%' : '-'}</td><td>${b.dueDate ? `${b.dueDate}` : '-'}</td><td>${b.payDate ? `${b.payDate}` : '-'}</td><td>${fPM(b.paymentMethod)}</td><td>${b.autoPay ? '✓' : ''}</td><td>${b.termEnd || '-'}</td><td class="no-print"><div class="action-btns">${canAmort ? `<button class="btn btn-schedule" onclick='showAmortization(${JSON.stringify(b)})'>Sched</button>` : ''}<button class="btn btn-view" onclick='viewDetail(${JSON.stringify(b)}, "bill")'>View</button><button class="btn btn-edit" onclick='openBillModal(${JSON.stringify(b)})'>Edit</button><button class="btn btn-danger" onclick="deleteBill(${b.id})">Del</button></div></td></tr>`; }); h += '</tbody></table>'; c.innerHTML = h; }
+        function renderBills() { renderTableData(bills.filter(b => !b.isPlanned), 'billsTable', billSortColumn, billSortDirection, 'sortBills'); }
+        function renderPlanned() { renderTableData(bills.filter(b => b.isPlanned), 'plannedTable', plannedSortColumn, plannedSortDirection, 'sortPlanned', true); }
+        function fBT(t) { const ts = { 'credit_card': 'Credit Card', 'loan': 'Loan', 'utility': 'Utility', 'insurance': 'Insurance', 'tax': 'Tax', 'streaming': 'Streaming', 'grocery': 'Grocery', 'gas': 'Gas/Fuel', 'other': 'Other' }; return ts[t] || t; }
+        function fPM(m) { const ms = { 'credit_card': 'Credit Card', 'check': 'Check', 'in_person': 'In Person', 'other': 'Other' }; return ms[m] || m; }
+        async function deleteBill(id) { if (!confirm('Delete this item?')) return; try { await fetch('/api/bill', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, budget_id: currentBudgetId }) }); await switchBudget(); } catch { alert('Failed to delete'); }}
+        function viewDetail(item, type) { const m = document.getElementById('detailModal'); document.getElementById('detailTitle').textContent = type === 'bill' ? 'Bill Details' : 'Income Details'; let h = '<div class="detail-view">'; if (type === 'bill') { h += `<div class="detail-row"><div class="detail-label">Name:</div><div class="detail-value">${item.name}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Type:</div><div class="detail-value">${fBT(item.billType)}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Account:</div><div class="detail-value">${item.account || '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Website:</div><div class="detail-value">${item.website ? `<a href="${item.website}" target="_blank">${item.website}</a>` : '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Monthly Payment:</div><div class="detail-value">$${item.amount.toFixed(2)}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Frequency:</div><div class="detail-value">${item.frequency}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Interest Rate:</div><div class="detail-value">${item.interestRate ? item.interestRate.toFixed(4) + '% APR' : '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Due Date:</div><div class="detail-value">${item.dueDate ? `Day ${item.dueDate} of month` : '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Pay Date:</div><div class="detail-value">${item.payDate ? `Day ${item.payDate} of month` : '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Payment Method:</div><div class="detail-value">${fPM(item.paymentMethod)}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Auto-Pay:</div><div class="detail-value">${item.autoPay ? 'Yes' : 'No'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Loan Start Date:</div><div class="detail-value">${item.startDate || '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Term:</div><div class="detail-value">${item.termNumber && item.termUnit ? `${item.termNumber} ${item.termUnit}` : '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Term End Date:</div><div class="detail-value">${item.termEnd || '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Comments:</div><div class="detail-value">${item.comments || '-'}</div></div>`; } else { h += `<div class="detail-row"><div class="detail-label">Name:</div><div class="detail-value income-sensitive">${item.name}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Account/Employer:</div><div class="detail-value income-sensitive">${item.account || '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Amount:</div><div class="detail-value income-sensitive">$${item.amount.toFixed(2)}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Frequency:</div><div class="detail-value income-sensitive">${item.frequency}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Expected Day:</div><div class="detail-value income-sensitive">${item.day ? `Day ${item.day} of month` : '-'}</div></div>`; h += `<div class="detail-row"><div class="detail-label">Comments:</div><div class="detail-value income-sensitive">${item.comments || '-'}</div></div>`; } h += '</div>'; document.getElementById('detailContent').innerHTML = h; m.classList.add('active'); toggleIncomePrivacy(); }
+        function closeDetailModal() { document.getElementById('detailModal').classList.remove('active'); }
+        function showAmortization(bill) { const m = document.getElementById('amortizationModal'); document.getElementById('amortizationTitle').textContent = `Amortization - ${bill.name}`; const today = new Date(bill.startDate); const dueDay = bill.dueDate || 15; const pmt = bill.amount; const rate = bill.interestRate / 100 / 12; const totalMonths = getTInM(bill.termNumber, bill.termUnit); const pmtsMade = monthsBetween(bill.startDate, new Date().toISOString().split('T')[0]); const remainingPmts = totalMonths - pmtsMade; const principal = calcPrincipal(pmt, rate, totalMonths); const currentBal = calcRemaining(principal, pmt, rate, pmtsMade); const schedule = calcAmortFull(principal, pmt, rate, totalMonths, pmtsMade); let h = `<div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 8px;"><p style="margin-bottom: 8px;"><strong>⚠️ Estimated Calculation</strong></p><p style="font-size: 0.9em;">This schedule is calculated based on the payment amount ($${pmt.toFixed(2)}), interest rate (${bill.interestRate}% APR), term (${bill.termNumber} ${bill.termUnit}), and start date (${bill.startDate}). The original loan amount and current balance are estimates. Verify with your lender for exact figures.</p></div>`; h += `<div style="margin-bottom: 20px;"><p><strong>Estimated Original Loan:</strong> $${principal.toFixed(2)}</p><p><strong>Monthly Payment:</strong> $${pmt.toFixed(2)}</p><p><strong>Interest Rate:</strong> ${bill.interestRate}% APR</p><p><strong>Total Term:</strong> ${bill.termNumber} ${bill.termUnit} (${totalMonths} payments)</p><p><strong>Payments Made:</strong> ${pmtsMade} (estimated)</p><p><strong>Remaining Payments:</strong> ${remainingPmts}</p><p><strong>Estimated Current Balance:</strong> $${currentBal.toFixed(2)}</p></div><div class="amortization-table"><table><thead><tr><th>Pmt#</th><th>Date</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th><th>Status</th></tr></thead><tbody>`; schedule.rows.forEach(r => { h += `<tr${r.isPaid ? ' style="opacity: 0.5;"' : ''}><td>${r.month}</td><td>${r.date}</td><td>$${r.payment.toFixed(2)}</td><td>$${r.principal.toFixed(2)}</td><td>$${r.interest.toFixed(2)}</td><td>$${r.balance.toFixed(2)}</td><td>${r.isPaid ? 'Paid' : 'Due'}</td></tr>`; }); h += '</tbody></table></div>'; document.getElementById('amortizationContent').innerHTML = h; m.classList.add('active'); }
+        function closeAmortizationModal() { document.getElementById('amortizationModal').classList.remove('active'); }
+        function showExpenseBreakdown() { const m = document.getElementById('breakdownModal'); const breakdown = { credit_card: 0, check: 0, in_person: 0, other: 0 }; const counts = { credit_card: 0, check: 0, in_person: 0, other: 0 }; bills.forEach(b => { const monthly = toMonthly(b.amount, b.frequency); const method = b.paymentMethod || 'other'; breakdown[method] = (breakdown[method] || 0) + monthly; counts[method] = (counts[method] || 0) + 1; }); const total = Object.values(breakdown).reduce((s, v) => s + v, 0); let h = '<div style="padding: 20px;"><table style="min-width: auto; font-size: 1em;"><thead><tr><th>Payment Method</th><th>Count</th><th>Monthly Total</th><th>Percentage</th></tr></thead><tbody>'; const methods = [{ key: 'credit_card', label: 'Credit Card' }, { key: 'check', label: 'Check' }, { key: 'in_person', label: 'In Person' }, { key: 'other', label: 'Other' }]; methods.forEach(({ key, label }) => { const amt = breakdown[key]; const pct = total > 0 ? (amt / total * 100).toFixed(1) : 0; if (amt > 0 || counts[key] > 0) { h += `<tr><td><strong>${label}</strong></td><td>${counts[key]}</td><td>$${amt.toFixed(2)}</td><td>${pct}%</td></tr>`; } }); h += `<tr style="border-top: 2px solid #374151; font-weight: bold;"><td>Total</td><td>${Object.values(counts).reduce((s,v) => s+v, 0)}</td><td>$${total.toFixed(2)}</td><td>100%</td></tr></tbody></table></div>`; document.getElementById('breakdownContent').innerHTML = h; m.classList.add('active'); }
+        function closeBreakdownModal() { document.getElementById('breakdownModal').classList.remove('active'); }
+        function getTInM(n, u) { const m = { 'months': 1, 'years': 12 }; return Math.round(n * (m[u] || 1)); }
+        function monthsBetween(start, end) { const s = new Date(start); const e = new Date(end); return Math.max(0, (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())); }
+        function calcPrincipal(pmt, rate, months) { if (rate === 0) return pmt * months; return pmt * (1 - Math.pow(1 + rate, -months)) / rate; }
+        function calcRemaining(principal, pmt, rate, pmtsMade) { if (pmtsMade === 0) return principal; let bal = principal; for (let i = 0; i < pmtsMade; i++) { const int = bal * rate; bal -= (pmt - int); if (bal < 0) bal = 0; } return bal; }
+        function calcAmortFull(principal, pmt, rate, totalMo, pmtsMade) { const rows = []; let bal = principal; const today = new Date(); for (let i = 1; i <= totalMo; i++) { const int = bal * rate; const prin = pmt - int; bal -= prin; const pmtDate = new Date(today.getFullYear(), today.getMonth() + i - pmtsMade, 15); rows.push({ month: i, date: pmtDate.toISOString().split('T')[0], payment: pmt, principal: prin, interest: int, balance: Math.max(0, bal), isPaid: i <= pmtsMade }); } return { rows }; }
+        function openIncomeModal(income = null) { const m = document.getElementById('incomeModal'); const f = document.getElementById('incomeForm'); if (income) { editingIncomeId = income.id; document.getElementById('incomeModalTitle').textContent = 'Edit Income'; document.getElementById('incomeName').value = income.name || ''; document.getElementById('incomeAccount').value = income.account || ''; document.getElementById('incomeAmount').value = income.amount || ''; document.getElementById('incomeFrequency').value = income.frequency || 'monthly'; document.getElementById('incomeDay').value = income.day || ''; document.getElementById('incomeComments').value = income.comments || ''; } else { editingIncomeId = null; document.getElementById('incomeModalTitle').textContent = 'Add Income'; f.reset(); } m.classList.add('active'); }
+        function closeIncomeModal() { document.getElementById('incomeModal').classList.remove('active'); editingIncomeId = null; }
+        document.getElementById('incomeForm').addEventListener('submit', async (e) => { e.preventDefault(); const inc = { id: editingIncomeId || 0, name: document.getElementById('incomeName').value, account: document.getElementById('incomeAccount').value, amount: parseFloat(document.getElementById('incomeAmount').value), frequency: document.getElementById('incomeFrequency').value, day: parseInt(document.getElementById('incomeDay').value) || 0, comments: document.getElementById('incomeComments').value }; try { await fetch('/api/income', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budget_id: currentBudgetId, income: inc }) }); await switchBudget(); closeIncomeModal(); } catch { alert('Failed to save income'); }});
+        function renderIncomes() { const c = document.getElementById('incomeTable'); if (incomes.length === 0) { c.innerHTML = '<div class="empty-state"><p>No income sources yet.</p></div>'; return; } const gSC = (col) => incomeSortColumn === col ? (incomeSortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : 'sortable'; let h = `<table><thead><tr><th class="${gSC('name')}" onclick="sortIncomes('name')">Name</th><th class="${gSC('account')}" onclick="sortIncomes('account')">Account/Employer</th><th class="${gSC('amount')}" onclick="sortIncomes('amount')">Amount</th><th class="${gSC('frequency')}" onclick="sortIncomes('frequency')">Frequency</th><th class="${gSC('day')}" onclick="sortIncomes('day')">Expected Day</th><th class="no-print">Actions</th></tr></thead><tbody>`; incomes.forEach((inc) => { h += `<tr class="income-sensitive"><td><strong>${inc.name}</strong></td><td>${inc.account || '-'}</td><td>$${inc.amount.toFixed(2)}</td><td>${inc.frequency}</td><td>${inc.day ? `${inc.day}` : '-'}</td><td class="no-print"><div class="action-btns"><button class="btn btn-view" onclick='viewDetail(${JSON.stringify(inc)}, "income")'>View</button><button class="btn btn-edit" onclick='openIncomeModal(${JSON.stringify(inc)})'>Edit</button><button class="btn btn-danger" onclick="deleteIncome(${inc.id})">Del</button></div></td></tr>`; }); h += '</tbody></table>'; c.innerHTML = h; }
+        async function deleteIncome(id) { if (!confirm('Delete this income?')) return; try { await fetch('/api/income', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, budget_id: currentBudgetId }) }); await switchBudget(); } catch { alert('Failed to delete income'); }}
+        document.getElementById('billModal').addEventListener('click', (e) => { if (e.target.id === 'billModal') closeBillModal(); });
+        document.getElementById('incomeModal').addEventListener('click', (e) => { if (e.target.id === 'incomeModal') closeIncomeModal(); });
+        document.getElementById('detailModal').addEventListener('click', (e) => { if (e.target.id === 'detailModal') closeDetailModal(); });
+        document.getElementById('amortizationModal').addEventListener('click', (e) => { if (e.target.id === 'amortizationModal') closeAmortizationModal(); });
+        document.getElementById('breakdownModal').addEventListener('click', (e) => { if (e.target.id === 'breakdownModal') closeBreakdownModal(); });
+    </script>
+</body>
+</html>
